@@ -1,0 +1,53 @@
+// LeanCRM — prototype schema
+//
+// Privacy by Design notes (Assignment 4, Part 2.1):
+// - Data minimisation: User stores only id, email, name, createdAt.
+//   No phone, photo, login IP, or analytics ID. Deal stores only the fields
+//   used by the pipeline workflow. We deliberately omit common CRM fields
+//   like address, lead source, tags, birthday — we have no use case for them.
+// - Purpose limitation: every Deal carries userId; reads in app code go
+//   through getDealsForUser() / getDealForUser() which inject `where: { userId }`.
+// - Default = private: there is no team-sharing field in v1. When sharing is
+//   added, the default for newly created Deals will remain private.
+// - Right to erasure: see DELETE /account flow described in the report
+//   (Part 2.1, row 4). Cascades from User to Deal via onDelete: Cascade.
+//
+// Tech notes:
+// - SQLite is a deliberate prototype choice (acknowledged product debt in
+//   report Part 3.2). Production target stays Postgres per Assignment 3 ADR-001
+//   — only the `provider` and connection string change.
+// - Auth is intentionally deferred for the prototype. A single seeded user is
+//   used; getCurrentUserId() returns its id.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  deals     Deal[]
+}
+
+model Deal {
+  id          String   @id @default(cuid())
+  title       String
+  amount      Float?
+  stage       String   @default("LEAD") // values from DealStage in src/lib/stages.ts
+  contactName String?
+  companyName String?
+  notes       String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, stage])
+}
