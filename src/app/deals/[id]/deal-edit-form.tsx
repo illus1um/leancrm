@@ -24,13 +24,23 @@ type DealForm = {
   title: string;
   amount: number | null;
   stage: DealStage;
-  contactName: string | null;
-  companyName: string | null;
+  contactId: string | null;
+  companyId: string | null;
   notes: string | null;
   updatedAt: string;
 };
 
-export function DealEditForm({ deal }: { deal: DealForm }) {
+type Picker = { id: string; name: string };
+
+export function DealEditForm({
+  deal,
+  contacts,
+  companies,
+}: {
+  deal: DealForm;
+  contacts: Picker[];
+  companies: Picker[];
+}) {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const [savedAt, setSavedAt] = React.useState<Date | null>(null);
@@ -135,27 +145,33 @@ export function DealEditForm({ deal }: { deal: DealForm }) {
       </div>
 
       <div className="grid gap-7 sm:grid-cols-[1fr_1fr]">
-        <FieldRow label="Contact" id="contactName" error={fieldError("contactName")}>
-          <Input
-            id="contactName"
-            name="contactName"
-            defaultValue={deal.contactName ?? ""}
-            maxLength={120}
-            aria-invalid={Boolean(fieldError("contactName")) || undefined}
-            onInput={() => clearField("contactName")}
-            placeholder="Aliya N."
-          />
+        <FieldRow label="Contact" id="contactId" error={fieldError("contactId")}>
+          <NativeSelect
+            id="contactId"
+            name="contactId"
+            defaultValue={deal.contactId ?? ""}
+          >
+            <option value="">—</option>
+            {contacts.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </NativeSelect>
         </FieldRow>
-        <FieldRow label="Company" id="companyName" error={fieldError("companyName")}>
-          <Input
-            id="companyName"
-            name="companyName"
-            defaultValue={deal.companyName ?? ""}
-            maxLength={120}
-            aria-invalid={Boolean(fieldError("companyName")) || undefined}
-            onInput={() => clearField("companyName")}
-            placeholder="Aliya's Flowers"
-          />
+        <FieldRow label="Company" id="companyId" error={fieldError("companyId")}>
+          <NativeSelect
+            id="companyId"
+            name="companyId"
+            defaultValue={deal.companyId ?? ""}
+          >
+            <option value="">—</option>
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </NativeSelect>
         </FieldRow>
       </div>
 

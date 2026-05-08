@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/auth";
+import { STAGE_LABELS, type DealStage } from "@/lib/stages";
 import {
   dealCreateSchema,
   dealUpdateSchema,
@@ -14,21 +15,13 @@ export type ActionResult<T = unknown> =
   | { ok: true; data: T }
   | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
 
-/**
- * Create a deal. Used by NewDealDialog.
- *
- * NOTE: Authentication is intentionally deferred for the prototype (see report
- * Part 1.1 / "MVP is NOT"). In the production target this action would call
- * `await auth()` and verify the session before any DB write — see Assignment 3
- * sequence diagram 2 (Create Deal).
- */
 export async function createDeal(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const raw = {
     title: formData.get("title"),
     amount: formData.get("amount"),
     stage: formData.get("stage") || undefined,
-    contactName: formData.get("contactName") || undefined,
-    companyName: formData.get("companyName") || undefined,
+    contactId: formData.get("contactId") || undefined,
+    companyId: formData.get("companyId") || undefined,
     notes: formData.get("notes") || undefined,
   };
 
@@ -47,6 +40,7 @@ export async function createDeal(formData: FormData): Promise<ActionResult<{ id:
   });
 
   revalidatePath("/board");
+  revalidatePath("/dashboard");
   return { ok: true, data: { id: deal.id } };
 }
 
@@ -61,17 +55,31 @@ export async function updateDealStage(input: {
 
   const userId = await getCurrentUserId();
 
-  // Purpose-limitation: every read/write is scoped to the owner.
-  const result = await prisma.deal.updateMany({
+  const existing = await prisma.deal.findFirst({
     where: { id: parsed.data.dealId, userId },
-    data: { stage: parsed.data.newStage },
+    select: { stage: true },
   });
-
-  if (result.count === 0) {
-    return { ok: false, error: "Deal not found or not owned by current user" };
+  if (!existing) {
+    return { ok: false, error: "Deal not found" };
   }
 
+  await prisma.$transaction([
+    prisma.deal.update({
+      where: { id: parsed.data.dealId },
+      data: { stage: parsed.data.newStage },
+    }),
+    prisma.activity.create({
+      data: {
+        type: "STAGE_CHANGE",
+        content: `Stage: ${STAGE_LABELS[existing.stage as DealStage] ?? existing.stage} → ${STAGE_LABELS[parsed.data.newStage as DealStage]}`,
+        userId,
+        dealId: parsed.data.dealId,
+      },
+    }),
+  ]);
+
   revalidatePath("/board");
+  revalidatePath("/dashboard");
   revalidatePath(`/deals/${parsed.data.dealId}`);
   return { ok: true, data: { id: parsed.data.dealId, stage: parsed.data.newStage } };
 }
@@ -83,8 +91,8 @@ export async function updateDeal(formData: FormData): Promise<ActionResult<{ id:
     title: formData.get("title"),
     amount: formData.get("amount"),
     stage: formData.get("stage") || undefined,
-    contactName: formData.get("contactName") || undefined,
-    companyName: formData.get("companyName") || undefined,
+    contactId: formData.get("contactId") || undefined,
+    companyId: formData.get("companyId") || undefined,
     notes: formData.get("notes") || undefined,
   };
   const parsed = dealUpdateSchema.safeParse(raw);
@@ -108,6 +116,7 @@ export async function updateDeal(formData: FormData): Promise<ActionResult<{ id:
   }
 
   revalidatePath("/board");
+  revalidatePath("/dashboard");
   revalidatePath(`/deals/${dealId}`);
   return { ok: true, data: { id: dealId } };
 }
@@ -118,5 +127,6 @@ export async function deleteDeal(formData: FormData): Promise<void> {
   const userId = await getCurrentUserId();
   await prisma.deal.deleteMany({ where: { id, userId } });
   revalidatePath("/board");
+  revalidatePath("/dashboard");
   redirect("/board");
 }

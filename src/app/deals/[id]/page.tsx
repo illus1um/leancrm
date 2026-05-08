@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { getCurrentUserId } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import { DEAL_STAGES, STAGE_CLASS, STAGE_LABELS, type DealStage } from "@/lib/stages";
 import { DealEditForm } from "./deal-edit-form";
+import { ActivityFeed } from "./activity-feed";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +15,30 @@ export default async function DealPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const userId = await getCurrentUserId();
-  const deal = await prisma.deal.findFirst({ where: { id, userId } });
+  const user = await requireAuth();
+  const [deal, contacts, companies, activities] = await Promise.all([
+    prisma.deal.findFirst({
+      where: { id, userId: user.id },
+      include: {
+        contact: { select: { id: true, fullName: true } },
+        company: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.contact.findMany({
+      where: { userId: user.id },
+      orderBy: { fullName: "asc" },
+      select: { id: true, fullName: true },
+    }),
+    prisma.company.findMany({
+      where: { userId: user.id },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.activity.findMany({
+      where: { userId: user.id, dealId: id },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
   if (!deal) notFound();
 
   const stage = ((DEAL_STAGES as readonly string[]).includes(deal.stage)
@@ -32,7 +55,6 @@ export default async function DealPage({
         Back to the board
       </Link>
 
-      {/* Letterhead */}
       <header className={`mb-10 ${STAGE_CLASS[stage]}`}>
         <p className="text-[10px] uppercase tracking-[0.25em] text-[color:var(--stage-fg)]">
           № {deal.id.slice(-6)} · Filed under {STAGE_LABELS[stage]}
@@ -41,20 +63,30 @@ export default async function DealPage({
           {deal.title}
         </h1>
         <div className="mt-4 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-[13px] text-ink-soft">
-          {deal.contactName ? (
+          {deal.contact ? (
             <span>
               <span className="text-[10px] uppercase tracking-[0.18em] text-ink-soft/80">
                 Contact ·{" "}
               </span>
-              <span className="text-ink">{deal.contactName}</span>
+              <Link
+                href={`/contacts/${deal.contact.id}`}
+                className="link-ink text-ink hover:text-accent"
+              >
+                {deal.contact.fullName}
+              </Link>
             </span>
           ) : null}
-          {deal.companyName ? (
+          {deal.company ? (
             <span>
               <span className="text-[10px] uppercase tracking-[0.18em] text-ink-soft/80">
                 Company ·{" "}
               </span>
-              <span className="text-ink">{deal.companyName}</span>
+              <Link
+                href={`/companies/${deal.company.id}`}
+                className="link-ink text-ink hover:text-accent"
+              >
+                {deal.company.name}
+              </Link>
             </span>
           ) : null}
           <span>
@@ -79,12 +111,26 @@ export default async function DealPage({
           title: deal.title,
           amount: deal.amount,
           stage,
-          contactName: deal.contactName,
-          companyName: deal.companyName,
+          contactId: deal.contactId,
+          companyId: deal.companyId,
           notes: deal.notes,
           updatedAt: deal.updatedAt.toISOString(),
         }}
+        contacts={contacts.map((c) => ({ id: c.id, name: c.fullName }))}
+        companies={companies.map((c) => ({ id: c.id, name: c.name }))}
       />
+
+      <div className="mt-12">
+        <ActivityFeed
+          dealId={deal.id}
+          activities={activities.map((a) => ({
+            id: a.id,
+            type: a.type,
+            content: a.content,
+            createdAt: a.createdAt.toISOString(),
+          }))}
+        />
+      </div>
     </div>
   );
 }

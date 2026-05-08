@@ -19,7 +19,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { DEAL_STAGES, STAGE_LABELS, type DealStage } from "@/lib/stages";
 import { createDeal } from "@/lib/actions/deals";
 
-export function NewDealDialog({ defaultStage }: { defaultStage: DealStage }) {
+type Picker = { id: string; name: string };
+
+export function NewDealDialog({
+  defaultStage,
+  contacts,
+  companies,
+}: {
+  defaultStage: DealStage;
+  contacts: Picker[];
+  companies: Picker[];
+}) {
   const [open, setOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -133,25 +143,25 @@ export function NewDealDialog({ defaultStage }: { defaultStage: DealStage }) {
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Contact" id="contactName" error={fieldError("contactName")}>
-              <Input
-                id="contactName"
-                name="contactName"
-                maxLength={120}
-                aria-invalid={Boolean(fieldError("contactName")) || undefined}
-                onInput={() => clearField("contactName")}
-                placeholder="Aliya N."
-              />
+            <Field label="Contact" id="contactId" error={fieldError("contactId")}>
+              <NativeSelect id="contactId" name="contactId" defaultValue="">
+                <option value="">—</option>
+                {contacts.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </NativeSelect>
             </Field>
-            <Field label="Company" id="companyName" error={fieldError("companyName")}>
-              <Input
-                id="companyName"
-                name="companyName"
-                maxLength={120}
-                aria-invalid={Boolean(fieldError("companyName")) || undefined}
-                onInput={() => clearField("companyName")}
-                placeholder="Aliya's Flowers"
-              />
+            <Field label="Company" id="companyId" error={fieldError("companyId")}>
+              <NativeSelect id="companyId" name="companyId" defaultValue="">
+                <option value="">—</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </NativeSelect>
             </Field>
           </div>
           <Field label="Notes" id="notes" error={fieldError("notes")}>
