@@ -1,23 +1,13 @@
-// LeanCRM — prototype schema
+// LeanCRM — schema for the full A1 deliverable.
 //
-// Privacy by Design notes (Assignment 4, Part 2.1):
-// - Data minimisation: User stores only id, email, name, createdAt.
-//   No phone, photo, login IP, or analytics ID. Deal stores only the fields
-//   used by the pipeline workflow. We deliberately omit common CRM fields
-//   like address, lead source, tags, birthday — we have no use case for them.
-// - Purpose limitation: every Deal carries userId; reads in app code go
-//   through getDealsForUser() / getDealForUser() which inject `where: { userId }`.
-// - Default = private: there is no team-sharing field in v1. When sharing is
-//   added, the default for newly created Deals will remain private.
-// - Right to erasure: see DELETE /account flow described in the report
-//   (Part 2.1, row 4). Cascades from User to Deal via onDelete: Cascade.
-//
-// Tech notes:
-// - SQLite is a deliberate prototype choice (acknowledged product debt in
-//   report Part 3.2). Production target stays Postgres per Assignment 3 ADR-001
-//   — only the `provider` and connection string change.
-// - Auth is intentionally deferred for the prototype. A single seeded user is
-//   used; getCurrentUserId() returns its id.
+// Privacy by Design notes:
+// - Data minimisation: User stores id, email, name, passwordHash, createdAt only.
+//   No phone, photo, login IP, analytics ID. Contact/Company/Deal carry only the
+//   fields used by the workflow.
+// - Purpose limitation: every record carries userId; reads in app code go through
+//   helpers that inject `where: { userId }`.
+// - Default = private: no team-sharing field in v1. New records remain private.
+// - Right to erasure: User onDelete: Cascade flows down to all owned records.
 
 generator client {
   provider = "prisma-client"
@@ -29,25 +19,124 @@ datasource db {
 }
 
 model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  passwordHash String?
+  createdAt    DateTime   @default(now())
+
+  sessions     Session[]
+  deals        Deal[]
+  contacts     Contact[]
+  companies    Company[]
+  activities   Activity[]
+  reminders    Reminder[]
+}
+
+model Session {
   id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model Company {
+  id        String     @id @default(cuid())
+  name      String
+  website   String?
+  industry  String?
+  notes     String?
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  contacts  Contact[]
   deals     Deal[]
+  activities Activity[]
+  reminders Reminder[]
+
+  @@index([userId, name])
+}
+
+model Contact {
+  id        String     @id @default(cuid())
+  fullName  String
+  email     String?
+  phone     String?
+  notes     String?
+  companyId String?
+  company   Company?   @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  deals     Deal[]
+  activities Activity[]
+  reminders Reminder[]
+
+  @@index([userId, fullName])
 }
 
 model Deal {
-  id          String   @id @default(cuid())
+  id          String     @id @default(cuid())
   title       String
   amount      Float?
-  stage       String   @default("LEAD") // values from DealStage in src/lib/stages.ts
-  contactName String?
-  companyName String?
+  stage       String     @default("LEAD")
   notes       String?
+  contactId   String?
+  contact     Contact?   @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId   String?
+  company     Company?   @relation(fields: [companyId], references: [id], onDelete: SetNull)
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  activities  Activity[]
+  reminders   Reminder[]
 
   @@index([userId, stage])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  type      String   // CALL | EMAIL | MEETING | NOTE | STAGE_CHANGE
+  content   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dealId    String?
+  deal      Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([dealId])
+}
+
+model Reminder {
+  id        String   @id @default(cuid())
+  title     String
+  dueDate   DateTime
+  status    String   @default("OPEN") // OPEN | COMPLETED
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dealId    String?
+  deal      Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@index([userId, status, dueDate])
 }
