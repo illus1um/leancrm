@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { ContactEditForm } from "./contact-edit-form";
+import { ActivityFeed } from "@/components/activity-feed";
 
 export default async function ContactDetailPage({
   params,
@@ -11,7 +12,7 @@ export default async function ContactDetailPage({
 }) {
   const { id } = await params;
   const user = await requireAuth();
-  const [contact, companies] = await Promise.all([
+  const [contact, companies, activities] = await Promise.all([
     prisma.contact.findFirst({
       where: { id, userId: user.id },
       include: {
@@ -26,6 +27,10 @@ export default async function ContactDetailPage({
       where: { userId: user.id },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
+    }),
+    prisma.activity.findMany({
+      where: { userId: user.id, contactId: id },
+      orderBy: { createdAt: "desc" },
     }),
   ]);
   if (!contact) notFound();
@@ -85,6 +90,18 @@ export default async function ContactDetailPage({
             )}
           </section>
         </aside>
+      </div>
+
+      <div className="mt-12">
+        <ActivityFeed
+          link={{ contactId: contact.id }}
+          activities={activities.map((a) => ({
+            id: a.id,
+            type: a.type,
+            content: a.content,
+            createdAt: a.createdAt.toISOString(),
+          }))}
+        />
       </div>
     </div>
   );

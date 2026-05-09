@@ -5,7 +5,8 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { DEAL_STAGES, STAGE_CLASS, STAGE_LABELS, type DealStage } from "@/lib/stages";
 import { DealEditForm } from "./deal-edit-form";
-import { ActivityFeed } from "./activity-feed";
+import { ActivityFeed } from "@/components/activity-feed";
+import { QuickReminder } from "@/components/quick-reminder";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function DealPage({
 }) {
   const { id } = await params;
   const user = await requireAuth();
-  const [deal, contacts, companies, activities] = await Promise.all([
+  const [deal, contacts, companies, activities, reminders] = await Promise.all([
     prisma.deal.findFirst({
       where: { id, userId: user.id },
       include: {
@@ -37,6 +38,10 @@ export default async function DealPage({
     prisma.activity.findMany({
       where: { userId: user.id, dealId: id },
       orderBy: { createdAt: "desc" },
+    }),
+    prisma.reminder.findMany({
+      where: { userId: user.id, dealId: id },
+      orderBy: [{ status: "asc" }, { dueDate: "asc" }],
     }),
   ]);
   if (!deal) notFound();
@@ -105,24 +110,37 @@ export default async function DealPage({
         <hr className="mt-6 h-px border-0 bg-hairline" />
       </header>
 
-      <DealEditForm
-        deal={{
-          id: deal.id,
-          title: deal.title,
-          amount: deal.amount,
-          stage,
-          contactId: deal.contactId,
-          companyId: deal.companyId,
-          notes: deal.notes,
-          updatedAt: deal.updatedAt.toISOString(),
-        }}
-        contacts={contacts.map((c) => ({ id: c.id, name: c.fullName }))}
-        companies={companies.map((c) => ({ id: c.id, name: c.name }))}
-      />
+      <div className="grid gap-10 lg:grid-cols-[1fr_240px]">
+        <DealEditForm
+          deal={{
+            id: deal.id,
+            title: deal.title,
+            amount: deal.amount,
+            stage,
+            contactId: deal.contactId,
+            companyId: deal.companyId,
+            notes: deal.notes,
+            updatedAt: deal.updatedAt.toISOString(),
+          }}
+          contacts={contacts.map((c) => ({ id: c.id, name: c.fullName }))}
+          companies={companies.map((c) => ({ id: c.id, name: c.name }))}
+        />
+        <aside className="lg:pt-2">
+          <QuickReminder
+            link={{ dealId: deal.id }}
+            reminders={reminders.map((r) => ({
+              id: r.id,
+              title: r.title,
+              dueDate: r.dueDate.toISOString(),
+              status: r.status,
+            }))}
+          />
+        </aside>
+      </div>
 
       <div className="mt-12">
         <ActivityFeed
-          dealId={deal.id}
+          link={{ dealId: deal.id }}
           activities={activities.map((a) => ({
             id: a.id,
             type: a.type,

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { CompanyEditForm } from "./company-edit-form";
+import { ActivityFeed } from "@/components/activity-feed";
 
 export default async function CompanyDetailPage({
   params,
@@ -11,19 +12,25 @@ export default async function CompanyDetailPage({
 }) {
   const { id } = await params;
   const user = await requireAuth();
-  const company = await prisma.company.findFirst({
-    where: { id, userId: user.id },
-    include: {
-      contacts: {
-        orderBy: { fullName: "asc" },
-        select: { id: true, fullName: true, email: true },
+  const [company, activities] = await Promise.all([
+    prisma.company.findFirst({
+      where: { id, userId: user.id },
+      include: {
+        contacts: {
+          orderBy: { fullName: "asc" },
+          select: { id: true, fullName: true, email: true },
+        },
+        deals: {
+          orderBy: { updatedAt: "desc" },
+          select: { id: true, title: true, stage: true, amount: true },
+        },
       },
-      deals: {
-        orderBy: { updatedAt: "desc" },
-        select: { id: true, title: true, stage: true, amount: true },
-      },
-    },
-  });
+    }),
+    prisma.activity.findMany({
+      where: { userId: user.id, companyId: id },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
   if (!company) notFound();
 
   return (
@@ -103,6 +110,18 @@ export default async function CompanyDetailPage({
             )}
           </section>
         </aside>
+      </div>
+
+      <div className="mt-12">
+        <ActivityFeed
+          link={{ companyId: company.id }}
+          activities={activities.map((a) => ({
+            id: a.id,
+            type: a.type,
+            content: a.content,
+            createdAt: a.createdAt.toISOString(),
+          }))}
+        />
       </div>
     </div>
   );

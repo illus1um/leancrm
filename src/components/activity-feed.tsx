@@ -10,11 +10,17 @@ import { ACTIVITY_TYPES, type ActivityType } from "@/lib/schemas";
 import { createActivity } from "@/lib/actions/activities";
 import { formatRelative } from "@/lib/utils";
 
-type Activity = {
+export type Activity = {
   id: string;
   type: string;
   content: string;
   createdAt: string;
+};
+
+export type ActivityLink = {
+  dealId?: string;
+  contactId?: string;
+  companyId?: string;
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -26,10 +32,10 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 export function ActivityFeed({
-  dealId,
+  link,
   activities,
 }: {
-  dealId: string;
+  link: ActivityLink;
   activities: Activity[];
 }) {
   const router = useRouter();
@@ -41,7 +47,9 @@ export function ActivityFeed({
   async function action(formData: FormData) {
     setPending(true);
     setError(null);
-    formData.set("dealId", dealId);
+    if (link.dealId) formData.set("dealId", link.dealId);
+    if (link.contactId) formData.set("contactId", link.contactId);
+    if (link.companyId) formData.set("companyId", link.companyId);
     const result = await createActivity(formData);
     setPending(false);
     if (result.ok) {
@@ -59,11 +67,14 @@ export function ActivityFeed({
           Activity
         </h2>
         <span className="text-[10px] uppercase tracking-[0.2em] text-ink-soft tabular-nums">
-          {activities.length} entries
+          {activities.length} {activities.length === 1 ? "entry" : "entries"}
         </span>
       </header>
 
-      <form action={action} className="grid gap-3 rounded-md border border-rule bg-paper-deep/40 p-4">
+      <form
+        action={action}
+        className="grid gap-3 rounded-md border border-rule bg-paper-deep/40 p-4"
+      >
         <div className="grid grid-cols-[8rem_1fr] items-start gap-3">
           <div className="grid gap-1.5">
             <Label
@@ -100,7 +111,7 @@ export function ActivityFeed({
               required
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Called Aliya, confirmed delivery for Saturday."
+              placeholder="What just happened?"
             />
           </div>
         </div>
@@ -118,7 +129,7 @@ export function ActivityFeed({
 
       {activities.length === 0 ? (
         <p className="mt-6 text-sm text-ink-soft">
-          No activity yet. The first stage move will appear here automatically.
+          No activity yet. Stage moves will appear here automatically.
         </p>
       ) : (
         <ol className="mt-6 grid gap-4">
