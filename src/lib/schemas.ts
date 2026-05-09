@@ -17,7 +17,7 @@ const optionalCuid = z
   .optional()
   .transform((v) => (v ? v : null));
 
-export const dealCreateSchema = z.object({
+const dealBaseShape = {
   title: z.string().trim().min(1, "Title is required").max(120),
   amount: z
     .preprocess(
@@ -30,13 +30,25 @@ export const dealCreateSchema = z.object({
   contactId: optionalCuid,
   companyId: optionalCuid,
   notes: optionalString(2000),
-});
+} as const;
+
+const requireContactOrCompany = (d: { contactId: string | null; companyId: string | null }) =>
+  Boolean(d.contactId || d.companyId);
+
+const contactOrCompanyMsg = {
+  message: "Pick a contact or a company (at least one).",
+  path: ["contactId"] as PropertyKey[],
+};
+
+export const dealCreateSchema = z
+  .object(dealBaseShape)
+  .refine(requireContactOrCompany, contactOrCompanyMsg);
 
 export type DealCreateInput = z.infer<typeof dealCreateSchema>;
 
-export const dealUpdateSchema = dealCreateSchema.extend({
-  id: z.string().min(1),
-});
+export const dealUpdateSchema = z
+  .object({ ...dealBaseShape, id: z.string().min(1) })
+  .refine(requireContactOrCompany, contactOrCompanyMsg);
 
 export type DealUpdateInput = z.infer<typeof dealUpdateSchema>;
 
@@ -65,21 +77,21 @@ export const loginSchema = z.object({
 
 // Contact -------------------------------------------------------------------
 
+const optionalEmail = z.preprocess(
+  (v) => (typeof v === "string" ? v.trim().toLowerCase() : v),
+  z
+    .union([
+      z.literal("").transform(() => null),
+      z.string().email("Enter a valid email").max(160),
+      z.null(),
+      z.undefined().transform(() => null),
+    ])
+    .transform((v) => (v ?? null) as string | null)
+);
+
 export const contactCreateSchema = z.object({
   fullName: z.string().trim().min(1, "Full name is required").max(120),
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .max(160)
-    .optional()
-    .transform((v) => (v ? v : null))
-    .pipe(
-      z
-        .string()
-        .email("Enter a valid email")
-        .nullable()
-    ),
+  email: optionalEmail,
   phone: optionalString(40),
   notes: optionalString(2000),
   companyId: optionalCuid,

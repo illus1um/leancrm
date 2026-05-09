@@ -18,7 +18,7 @@ describe("DEAL_STAGES", () => {
     ]);
   });
 
-  it("has a label for every stage (no UI gap when a new stage lands)", () => {
+  it("has a label for every stage", () => {
     for (const s of DEAL_STAGES) {
       expect(STAGE_LABELS[s]).toBeTruthy();
     }
@@ -33,38 +33,47 @@ describe("DEAL_STAGES", () => {
   });
 });
 
-describe("Zod schemas", () => {
+describe("Deal Zod schemas", () => {
   it("rejects empty title on create", () => {
-    const result = dealCreateSchema.safeParse({ title: "", stage: "LEAD" });
+    const result = dealCreateSchema.safeParse({
+      title: "",
+      stage: "LEAD",
+      contactId: "c1",
+    });
     expect(result.success).toBe(false);
   });
 
-  it("accepts a minimal valid create payload", () => {
-    const result = dealCreateSchema.safeParse({ title: "New deal" });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.stage).toBe("LEAD");
-      expect(result.data.amount).toBeNull();
+  it("requires either contact or company on create", () => {
+    const result = dealCreateSchema.safeParse({ title: "Orphan deal" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const flat = result.error.flatten();
+      expect(flat.fieldErrors.contactId?.[0]).toMatch(/contact or a company/i);
     }
   });
 
-  it("coerces blank optional strings to null", () => {
+  it("accepts when only contactId is provided", () => {
     const result = dealCreateSchema.safeParse({
       title: "X",
-      contactName: "",
-      companyName: "  ",
-      notes: "",
+      contactId: "c1",
     });
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.contactName).toBeNull();
-      expect(result.data.companyName).toBeNull();
-      expect(result.data.notes).toBeNull();
-    }
+  });
+
+  it("accepts when only companyId is provided", () => {
+    const result = dealCreateSchema.safeParse({
+      title: "X",
+      companyId: "co1",
+    });
+    expect(result.success).toBe(true);
   });
 
   it("coerces numeric amount strings", () => {
-    const result = dealCreateSchema.safeParse({ title: "X", amount: "1500" });
+    const result = dealCreateSchema.safeParse({
+      title: "X",
+      amount: "1500",
+      contactId: "c1",
+    });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.amount).toBe(1500);
   });
@@ -78,7 +87,10 @@ describe("Zod schemas", () => {
   });
 
   it("requires id on update", () => {
-    const result = dealUpdateSchema.safeParse({ title: "X" });
+    const result = dealUpdateSchema.safeParse({
+      title: "X",
+      contactId: "c1",
+    });
     expect(result.success).toBe(false);
   });
 });
