@@ -14,7 +14,7 @@ Course: Software Development Case Study (CSE-2505M). Team: Meirambek Yaki, Asqar
 
 ## Demo
 
-Video walkthrough: [Google Drive](https://drive.google.com/file/d/1LEqR-CSg_X2gGydx6uSJsJw0OygRBBoK/view?usp=sharing)
+Final Project walkthrough (YouTube, Unlisted): [https://www.youtube.com/watch?v=PiTQWVCiFeU](https://www.youtube.com/watch?v=PiTQWVCiFeU) — 8-minute demo + presentation covering every FR/NFR from Assignment 1.
 
 ### 1. Pipeline board
 
