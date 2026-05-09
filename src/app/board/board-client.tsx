@@ -40,10 +40,12 @@ export function BoardClient({
   initialDeals,
   contacts,
   companies,
+  focusStage = null,
 }: {
   initialDeals: DealCard[];
   contacts: Picker[];
   companies: Picker[];
+  focusStage?: DealStage | null;
 }) {
   const [deals, setDeals] = React.useState<DealCard[]>(initialDeals);
   const [activeId, setActiveId] = React.useState<string | null>(null);
@@ -53,6 +55,13 @@ export function BoardClient({
   React.useEffect(() => {
     setDeals(initialDeals);
   }, [initialDeals]);
+
+  React.useEffect(() => {
+    if (!focusStage) return;
+    const el = document.getElementById(`column-${focusStage}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [focusStage]);
 
   const filteredDeals = React.useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -135,21 +144,38 @@ export function BoardClient({
           <p className="text-[10px] uppercase tracking-[0.25em] text-ink-soft">
             № 01 · The pipeline
           </p>
-          <h1 className="mt-3 text-[clamp(2.5rem,6vw,4.25rem)] font-semibold leading-[0.95] tracking-[-0.03em]">
-            Where every deal is{" "}
-            <span className="text-accent">visible.</span>
-          </h1>
-          <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-soft">
-            Drag a card across columns to change its stage. Click any title to edit
-            details. The board is the source of truth — there is no second place a
-            deal can hide.
-          </p>
+          {deals.length === 0 ? (
+            <>
+              <h1 className="mt-3 text-[clamp(2rem,5vw,3.25rem)] font-semibold leading-[0.95] tracking-[-0.03em]">
+                Start your{" "}
+                <span className="text-accent">first deal.</span>
+              </h1>
+              <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-soft">
+                Pick a column below and tap the <span className="rounded-full border border-hairline px-2 py-0.5 text-xs">+</span>{" "}
+                in its header. You can drag the card later to push it through stages.
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="mt-3 text-[clamp(2.5rem,6vw,4.25rem)] font-semibold leading-[0.95] tracking-[-0.03em]">
+                Where every deal is{" "}
+                <span className="text-accent">visible.</span>
+              </h1>
+              <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-soft">
+                Drag a card across columns to change its stage. Click any title to edit
+                details. The board is the source of truth — there is no second place a
+                deal can hide.
+              </p>
+            </>
+          )}
         </div>
-        <dl className="flex gap-8 border-l border-rule pl-8 md:pl-10">
-          <Stat label="Open deals" value={String(totals.openCount)} />
-          <Stat label="Open volume" value={formatAmount(totals.openTotal) || "—"} />
-          <Stat label="All-time" value={formatAmount(totals.total) || "—"} muted />
-        </dl>
+        {deals.length > 0 ? (
+          <dl className="flex gap-8 border-l border-rule pl-8 md:pl-10">
+            <Stat label="Open deals" value={String(totals.openCount)} />
+            <Stat label="Open volume" value={formatAmount(totals.openTotal) || "—"} />
+            <Stat label="All-time" value={formatAmount(totals.total) || "—"} muted />
+          </dl>
+        ) : null}
       </header>
 
       <div className="mb-4 flex items-center gap-3">
@@ -208,6 +234,7 @@ export function BoardClient({
             stage={stage}
             cards={grouped[stage]}
             isDraggingOverlay={activeCard?.stage === stage}
+            isFocused={focusStage === stage}
             contacts={contacts}
             companies={companies}
           />
@@ -255,12 +282,14 @@ function Column({
   stage,
   cards,
   isDraggingOverlay,
+  isFocused,
   contacts,
   companies,
 }: {
   stage: DealStage;
   cards: DealCard[];
   isDraggingOverlay: boolean;
+  isFocused: boolean;
   contacts: Picker[];
   companies: Picker[];
 }) {
@@ -269,11 +298,13 @@ function Column({
   return (
     <section
       ref={setNodeRef}
+      id={`column-${stage}`}
       className={cn(
         "group/col flex flex-col rounded-md border border-rule transition-all",
         STAGE_CLASS[stage],
         "bg-[color-mix(in_oklab,var(--stage-bg)_55%,var(--paper))]",
-        isOver && "ring-1 ring-accent ring-offset-2 ring-offset-paper"
+        isOver && "ring-1 ring-accent ring-offset-2 ring-offset-paper",
+        isFocused && "ring-2 ring-accent ring-offset-2 ring-offset-paper"
       )}
     >
       <header className="flex items-baseline justify-between border-b border-hairline/50 px-4 py-3">

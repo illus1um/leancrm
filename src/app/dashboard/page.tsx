@@ -99,7 +99,7 @@ export default async function DashboardPage() {
             return (
               <Link
                 key={stage}
-                href="/board"
+                href={`/board?stage=${stage}`}
                 className={`group rounded-md border border-rule p-4 ${STAGE_CLASS[stage]} bg-[color-mix(in_oklab,var(--stage-bg)_55%,var(--paper))] transition-colors hover:border-ink/30`}
               >
                 <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--stage-fg)]">
@@ -156,9 +156,17 @@ export default async function DashboardPage() {
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_1fr]">
         <section>
-          <h2 className="text-[10px] uppercase tracking-[0.22em] text-ink-soft">
-            Reminders that need you
-          </h2>
+          <header className="flex items-baseline justify-between">
+            <h2 className="text-[10px] uppercase tracking-[0.22em] text-ink-soft">
+              Reminders that need you
+            </h2>
+            <Link
+              href="/reminders"
+              className="text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-accent"
+            >
+              See all →
+            </Link>
+          </header>
           {openReminders.length === 0 ? (
             <p className="mt-3 text-sm text-ink-soft">
               Nothing on the list. <Link href="/reminders" className="link-ink text-ink hover:text-accent">Add one</Link>.
@@ -197,9 +205,17 @@ export default async function DashboardPage() {
         </section>
 
         <section>
-          <h2 className="text-[10px] uppercase tracking-[0.22em] text-ink-soft">
-            Recent activity
-          </h2>
+          <header className="flex items-baseline justify-between">
+            <h2 className="text-[10px] uppercase tracking-[0.22em] text-ink-soft">
+              Recent activity
+            </h2>
+            <Link
+              href="/board"
+              className="text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-accent"
+            >
+              Open pipeline →
+            </Link>
+          </header>
           {recentActivity.length === 0 ? (
             <p className="mt-3 text-sm text-ink-soft">
               Move a deal between columns to see entries here.

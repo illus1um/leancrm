@@ -5,8 +5,17 @@ import { BoardClient, type DealCard } from "./board-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function BoardPage() {
+export default async function BoardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ stage?: string }>;
+}) {
   const user = await requireAuth();
+  const { stage: stageParam } = await searchParams;
+  const focusStage = (DEAL_STAGES as readonly string[]).includes(stageParam ?? "")
+    ? (stageParam as DealStage)
+    : null;
+
   const [deals, contacts, companies] = await Promise.all([
     prisma.deal.findMany({
       where: { userId: user.id },
@@ -46,6 +55,7 @@ export default async function BoardPage() {
         initialDeals={initialDeals}
         contacts={contacts.map((c) => ({ id: c.id, name: c.fullName }))}
         companies={companies.map((c) => ({ id: c.id, name: c.name }))}
+        focusStage={focusStage}
       />
     </div>
   );
