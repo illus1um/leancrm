@@ -8,7 +8,7 @@ import { logoutUser } from "@/lib/actions/auth";
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "LeanCRM — for small teams",
+  title: "LeanCRM",
   description:
     "A drag-and-drop CRM for shopkeepers, makers, and small agencies. CSE-2505M Software Development Case Study.",
 };
@@ -41,7 +41,21 @@ export default async function RootLayout({
             <div className="flex items-center gap-3">
               {user ? (
                 <>
-                  <div className="hidden items-center gap-2 rounded-full border border-rule bg-paper-deep/60 px-3 py-1 text-xs text-ink-soft sm:flex">
+                  <form
+                    action="/search"
+                    method="GET"
+                    className="hidden md:block"
+                    role="search"
+                  >
+                    <input
+                      type="search"
+                      name="q"
+                      placeholder="Search…"
+                      aria-label="Search workspace"
+                      className="h-8 w-44 rounded-sm border border-rule bg-paper-deep/40 px-3 text-xs placeholder:text-ink/40 focus:border-accent focus:bg-paper focus:outline-none"
+                    />
+                  </form>
+                  <div className="hidden items-center gap-2 rounded-full border border-rule bg-paper-deep/60 px-3 py-1 text-xs text-ink-soft lg:flex">
                     <span
                       className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
                       aria-hidden
