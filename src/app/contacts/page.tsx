@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+import { formatRelative } from "@/lib/utils";
 import { NewContactDialog } from "./new-contact-dialog";
 
 export default async function ContactsPage() {
@@ -38,24 +39,39 @@ export default async function ContactsPage() {
           No contacts yet. Add one to get started.
         </p>
       ) : (
-        <ul className="mt-6 divide-y divide-rule rounded-md border border-rule bg-paper-deep/40">
-          {contacts.map((c) => (
-            <li key={c.id}>
-              <Link
-                href={`/contacts/${c.id}`}
-                className="grid grid-cols-[1fr_1fr_auto] items-center gap-4 px-5 py-3 transition-colors hover:bg-paper"
-              >
-                <span className="text-[15px] font-medium">{c.fullName}</span>
-                <span className="text-sm text-ink-soft">
-                  {c.company?.name ?? "—"}
-                </span>
-                <span className="text-xs text-ink-soft tabular-nums">
-                  {c.email ?? c.phone ?? ""}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-6 overflow-hidden rounded-md border border-rule bg-paper-deep/40">
+          <div className="hidden grid-cols-[1.4fr_1.1fr_1.3fr_0.8fr_auto] gap-4 border-b border-rule px-5 py-2.5 text-[10px] uppercase tracking-[0.18em] text-ink-soft md:grid">
+            <span>Name</span>
+            <span>Company</span>
+            <span>Email</span>
+            <span>Phone</span>
+            <span className="text-right">Last update</span>
+          </div>
+          <ul className="divide-y divide-rule">
+            {contacts.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href={`/contacts/${c.id}`}
+                  className="grid grid-cols-1 items-center gap-1 px-5 py-3 transition-colors hover:bg-paper md:grid-cols-[1.4fr_1.1fr_1.3fr_0.8fr_auto] md:gap-4"
+                >
+                  <span className="text-[15px] font-medium">{c.fullName}</span>
+                  <span className="text-sm text-ink-soft">
+                    {c.company?.name ?? "—"}
+                  </span>
+                  <span className="text-xs text-ink-soft tabular-nums">
+                    {c.email ?? "—"}
+                  </span>
+                  <span className="text-xs text-ink-soft tabular-nums">
+                    {c.phone ?? "—"}
+                  </span>
+                  <span className="text-xs uppercase tracking-[0.16em] text-ink-soft tabular-nums md:text-right">
+                    {formatRelative(c.updatedAt)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
