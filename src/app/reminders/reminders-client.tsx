@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Check, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -165,10 +166,21 @@ function Section({
                 <input type="hidden" name="id" value={r.id} />
                 <button
                   type="submit"
-                  className={`grid h-5 w-5 place-items-center rounded-sm border transition-colors ${muted ? "border-ink-soft bg-ink-soft/30" : overdue ? "border-destructive" : "border-rule hover:border-accent"}`}
-                  aria-label={muted ? "Reopen" : "Mark complete"}
+                  title={muted ? "Reopen reminder" : "Mark complete"}
+                  aria-label={muted ? "Reopen reminder" : "Mark complete"}
+                  className={`grid h-7 w-7 cursor-pointer place-items-center rounded-full border transition-all ${
+                    muted
+                      ? "border-accent bg-accent text-paper hover:bg-paper hover:text-accent"
+                      : overdue
+                      ? "border-destructive/60 text-destructive hover:bg-destructive hover:text-paper"
+                      : "border-rule text-ink-soft hover:border-accent hover:text-accent"
+                  }`}
                 >
-                  {muted ? <span className="text-paper text-[10px] leading-none">✓</span> : null}
+                  {muted ? (
+                    <RotateCcw className="h-3.5 w-3.5" strokeWidth={2.25} />
+                  ) : (
+                    <Check className="h-4 w-4" strokeWidth={2.25} />
+                  )}
                 </button>
               </form>
               <div>
