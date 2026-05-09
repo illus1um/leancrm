@@ -15,6 +15,7 @@ export type Activity = {
   type: string;
   content: string;
   createdAt: string;
+  authorName?: string | null;
 };
 
 export type ActivityLink = {
@@ -146,7 +147,14 @@ export function ActivityFeed({
                   {formatRelative(new Date(a.createdAt))}
                 </p>
               </div>
-              <p className="text-sm leading-relaxed text-ink">{a.content}</p>
+              <div>
+                <p className="text-sm leading-relaxed text-ink">{a.content}</p>
+                {a.authorName ? (
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+                    by {a.authorName}
+                  </p>
+                ) : null}
+              </div>
             </li>
           ))}
         </ol>

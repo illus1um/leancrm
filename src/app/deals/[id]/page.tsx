@@ -37,6 +37,7 @@ export default async function DealPage({
     }),
     prisma.activity.findMany({
       where: { userId: user.id, dealId: id },
+      include: { user: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.reminder.findMany({
@@ -146,6 +147,7 @@ export default async function DealPage({
             type: a.type,
             content: a.content,
             createdAt: a.createdAt.toISOString(),
+            authorName: a.user?.name ?? null,
           }))}
         />
       </div>

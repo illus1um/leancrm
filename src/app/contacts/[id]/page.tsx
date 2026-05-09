@@ -30,6 +30,7 @@ export default async function ContactDetailPage({
     }),
     prisma.activity.findMany({
       where: { userId: user.id, contactId: id },
+      include: { user: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
     }),
   ]);
@@ -100,6 +101,7 @@ export default async function ContactDetailPage({
             type: a.type,
             content: a.content,
             createdAt: a.createdAt.toISOString(),
+            authorName: a.user?.name ?? null,
           }))}
         />
       </div>
