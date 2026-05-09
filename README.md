@@ -8,6 +8,10 @@ The same prototype is the deliverable for **Assignment 4** (MVP hypothesis & eth
 
 Course: Software Development Case Study (CSE-2505M). Team: Meirambek Yaki, Asqar Nurym.
 
+## Live deployment
+
+[leancrm-mw6xpi2qe-illus1ums-projects.vercel.app](https://leancrm-mw6xpi2qe-illus1ums-projects.vercel.app/) — Vercel + Turso (managed libSQL). Sign in with the seeded demo user `demo@leancrm.local` / `demo12345`, or register a fresh account at `/register`.
+
 ## Demo
 
 Video walkthrough: [Google Drive](https://drive.google.com/file/d/1LEqR-CSg_X2gGydx6uSJsJw0OygRBBoK/view?usp=sharing)
@@ -127,9 +131,10 @@ Reminder pressure as a coercion surface. The fix: reminders in v1 are self-only.
 - [src/lib/stages.ts](src/lib/stages.ts) — stage order and display
 - [prisma/schema.prisma](prisma/schema.prisma) — schema with privacy-by-design comments
 
-## Repo
+## Repo + deployment
 
-[github.com/illus1um/leancrm](https://github.com/illus1um/leancrm)
+- Source: [github.com/illus1um/leancrm](https://github.com/illus1um/leancrm)
+- Live: [leancrm-mw6xpi2qe-illus1ums-projects.vercel.app](https://leancrm-mw6xpi2qe-illus1ums-projects.vercel.app/) (Vercel + Turso)
 
 ## Final delivery (CSE-2505M)
 
