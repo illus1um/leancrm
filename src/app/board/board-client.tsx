@@ -34,14 +34,36 @@ export type DealCard = {
   updatedAt: string;
 };
 
-export function BoardClient({ initialDeals }: { initialDeals: DealCard[] }) {
+export type Picker = { id: string; name: string };
+
+export function BoardClient({
+  initialDeals,
+  contacts,
+  companies,
+}: {
+  initialDeals: DealCard[];
+  contacts: Picker[];
+  companies: Picker[];
+}) {
   const [deals, setDeals] = React.useState<DealCard[]>(initialDeals);
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [search, setSearch] = React.useState("");
 
   React.useEffect(() => {
     setDeals(initialDeals);
   }, [initialDeals]);
+
+  const filteredDeals = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return deals;
+    return deals.filter(
+      (d) =>
+        d.title.toLowerCase().includes(q) ||
+        (d.contactName ?? "").toLowerCase().includes(q) ||
+        (d.companyName ?? "").toLowerCase().includes(q)
+    );
+  }, [deals, search]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
@@ -56,9 +78,9 @@ export function BoardClient({ initialDeals }: { initialDeals: DealCard[] }) {
       WON: [],
       LOST: [],
     };
-    for (const d of deals) map[d.stage].push(d);
+    for (const d of filteredDeals) map[d.stage].push(d);
     return map;
-  }, [deals]);
+  }, [filteredDeals]);
 
   const totals = React.useMemo(() => {
     const total = deals.reduce((s, d) => s + (d.amount ?? 0), 0);
@@ -130,6 +152,22 @@ export function BoardClient({ initialDeals }: { initialDeals: DealCard[] }) {
         </dl>
       </header>
 
+      <div className="mb-4 flex items-center gap-3">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search deals, contacts, companies…"
+          className="h-9 w-full max-w-sm rounded-sm border border-rule bg-paper px-3 text-sm placeholder:text-ink/35 focus:border-accent focus:outline-none"
+          aria-label="Search deals"
+        />
+        {search ? (
+          <span className="text-xs text-ink-soft">
+            {filteredDeals.length} of {deals.length}
+          </span>
+        ) : null}
+      </div>
+
       {error ? (
         <div
           className="mb-4 rounded-sm border border-l-2 border-l-destructive bg-destructive/5 px-3 py-2 text-sm text-destructive"
@@ -146,6 +184,8 @@ export function BoardClient({ initialDeals }: { initialDeals: DealCard[] }) {
             stage={stage}
             cards={grouped[stage]}
             isDraggingOverlay={activeCard?.stage === stage}
+            contacts={contacts}
+            companies={companies}
           />
         ))}
       </div>
@@ -191,10 +231,14 @@ function Column({
   stage,
   cards,
   isDraggingOverlay,
+  contacts,
+  companies,
 }: {
   stage: DealStage;
   cards: DealCard[];
   isDraggingOverlay: boolean;
+  contacts: Picker[];
+  companies: Picker[];
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
 
@@ -222,7 +266,7 @@ function Column({
             {String(cards.length).padStart(2, "0")}
           </span>
         </div>
-        <NewDealDialog defaultStage={stage} />
+        <NewDealDialog defaultStage={stage} contacts={contacts} companies={companies} />
       </header>
       <p className="px-4 pt-2 text-xs text-ink-soft">{STAGE_GLOSS[stage]}</p>
       <div className="flex flex-col gap-2 p-3 min-h-32">

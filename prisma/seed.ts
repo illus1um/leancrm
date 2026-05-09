@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
+import bcrypt from "bcryptjs";
 
 const adapter = new PrismaLibSql({
   url: process.env.DATABASE_URL ?? "file:./dev.db",
@@ -9,106 +10,140 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const demoEmail = "demo@leancrm.local";
+  const demoPassword = "demo12345";
+  const passwordHash = await bcrypt.hash(demoPassword, 10);
 
   const user = await prisma.user.upsert({
     where: { email: demoEmail },
-    update: {},
-    create: { email: demoEmail, name: "Demo Operator" },
+    update: { passwordHash },
+    create: {
+      email: demoEmail,
+      name: "Demo Operator",
+      passwordHash,
+    },
   });
 
-  // Wipe and reseed deals so the prototype always opens with a fresh, balanced board.
+  // Wipe and reseed downstream tables for a fresh demo state.
+  await prisma.activity.deleteMany({ where: { userId: user.id } });
+  await prisma.reminder.deleteMany({ where: { userId: user.id } });
   await prisma.deal.deleteMany({ where: { userId: user.id } });
+  await prisma.contact.deleteMany({ where: { userId: user.id } });
+  await prisma.company.deleteMany({ where: { userId: user.id } });
 
-  const deals: Array<{
-    title: string;
-    stage: string;
-    amount: number | null;
-    contactName: string | null;
+  const companiesData = [
+    { name: "Aliya's Flowers", website: "aliyas-flowers.kz", industry: "Retail" },
+    { name: "Steppe Hotels", website: "steppe.kz", industry: "Hospitality" },
+    { name: "Lookout AI", website: "lookout.ai", industry: "Software" },
+    { name: "Tau Coworking", website: "tau.space", industry: "Real estate" },
+    { name: "Bayterek Bistro", website: null, industry: "Food & beverage" },
+  ];
+  const companies: Record<string, string> = {};
+  for (const c of companiesData) {
+    const created = await prisma.company.create({
+      data: { ...c, userId: user.id },
+    });
+    companies[c.name] = created.id;
+  }
+
+  const contactsData: Array<{
+    fullName: string;
+    email: string | null;
+    phone: string | null;
     companyName: string | null;
-    notes: string | null;
   }> = [
-    {
-      title: "Wedding bouquet — recurring monthly order",
-      stage: "LEAD",
-      amount: 1200,
-      contactName: "Aliya N.",
-      companyName: "Aliya's Flowers",
-      notes: "Walked in on Saturday. Asked about subscription pricing.",
-    },
-    {
-      title: "Sofa redesign for boutique hotel",
-      stage: "LEAD",
-      amount: 8500,
-      contactName: "Daniyar K.",
-      companyName: "Steppe Hotels",
-      notes: null,
-    },
-    {
-      title: "Quarterly content monitoring contract",
-      stage: "QUALIFICATION",
-      amount: 24000,
-      contactName: "Ruslan T.",
-      companyName: "Lookout AI",
-      notes: "Procurement asked for SOC2 docs — flagged for follow-up.",
-    },
-    {
-      title: "Custom corner sofa, 3-seat",
-      stage: "PROPOSAL",
-      amount: 3200,
-      contactName: "Yerkin S.",
-      companyName: null,
-      notes: "Proposal sent 2 days ago.",
-    },
-    {
-      title: "Office plant subscription",
-      stage: "PROPOSAL",
-      amount: 480,
-      contactName: "Madina B.",
-      companyName: "Tau Coworking",
-      notes: null,
-    },
-    {
-      title: "Brand-monitoring pilot, 30 days",
-      stage: "NEGOTIATION",
-      amount: 4500,
-      contactName: "Ruslan T.",
-      companyName: "Lookout AI",
-      notes: "Negotiating discount. Decision expected by Friday.",
-    },
-    {
-      title: "Anniversary bouquet, 50 stems",
-      stage: "WON",
-      amount: 350,
-      contactName: "Marat A.",
-      companyName: null,
-      notes: "Delivered on time. Repeat customer.",
-    },
-    {
-      title: "Restaurant table set, 12 chairs",
-      stage: "LOST",
-      amount: 6800,
-      contactName: "Asel R.",
-      companyName: "Bayterek Bistro",
-      notes: "Lost on price — competitor was 18% cheaper.",
-    },
+    { fullName: "Aliya N.", email: "aliya@flowers.kz", phone: "+7 701 555 0101", companyName: "Aliya's Flowers" },
+    { fullName: "Daniyar K.", email: "daniyar@steppe.kz", phone: null, companyName: "Steppe Hotels" },
+    { fullName: "Ruslan T.", email: "ruslan@lookout.ai", phone: null, companyName: "Lookout AI" },
+    { fullName: "Yerkin S.", email: null, phone: "+7 702 555 0202", companyName: null },
+    { fullName: "Madina B.", email: "madina@tau.space", phone: null, companyName: "Tau Coworking" },
+    { fullName: "Marat A.", email: null, phone: "+7 705 555 0303", companyName: null },
+    { fullName: "Asel R.", email: "asel@bayterek.kz", phone: null, companyName: "Bayterek Bistro" },
+  ];
+  const contacts: Record<string, string> = {};
+  for (const c of contactsData) {
+    const created = await prisma.contact.create({
+      data: {
+        fullName: c.fullName,
+        email: c.email,
+        phone: c.phone,
+        companyId: c.companyName ? companies[c.companyName] : null,
+        userId: user.id,
+      },
+    });
+    contacts[c.fullName] = created.id;
+  }
+
+  const dealsData = [
+    { title: "Wedding bouquet — recurring monthly order", stage: "LEAD", amount: 1200, contact: "Aliya N.", company: "Aliya's Flowers", notes: "Walked in on Saturday. Asked about subscription pricing." },
+    { title: "Sofa redesign for boutique hotel", stage: "LEAD", amount: 8500, contact: "Daniyar K.", company: "Steppe Hotels", notes: null },
+    { title: "Quarterly content monitoring contract", stage: "QUALIFICATION", amount: 24000, contact: "Ruslan T.", company: "Lookout AI", notes: "Procurement asked for SOC2 docs — flagged for follow-up." },
+    { title: "Custom corner sofa, 3-seat", stage: "PROPOSAL", amount: 3200, contact: "Yerkin S.", company: null, notes: "Proposal sent 2 days ago." },
+    { title: "Office plant subscription", stage: "PROPOSAL", amount: 480, contact: "Madina B.", company: "Tau Coworking", notes: null },
+    { title: "Brand-monitoring pilot, 30 days", stage: "NEGOTIATION", amount: 4500, contact: "Ruslan T.", company: "Lookout AI", notes: "Negotiating discount. Decision expected by Friday." },
+    { title: "Anniversary bouquet, 50 stems", stage: "WON", amount: 350, contact: "Marat A.", company: null, notes: "Delivered on time. Repeat customer." },
+    { title: "Restaurant table set, 12 chairs", stage: "LOST", amount: 6800, contact: "Asel R.", company: "Bayterek Bistro", notes: "Lost on price — competitor was 18% cheaper." },
   ];
 
-  for (const d of deals) {
-    await prisma.deal.create({
-      data: { ...d, userId: user.id },
+  const deals: Record<string, string> = {};
+  for (const d of dealsData) {
+    const created = await prisma.deal.create({
+      data: {
+        title: d.title,
+        amount: d.amount,
+        stage: d.stage,
+        notes: d.notes,
+        contactId: d.contact ? contacts[d.contact] : null,
+        companyId: d.company ? companies[d.company] : null,
+        userId: user.id,
+      },
     });
+    deals[d.title] = created.id;
   }
 
-  const counts = await prisma.deal.groupBy({
-    by: ["stage"],
-    _count: { _all: true },
-    where: { userId: user.id },
+  // A couple of demo activities.
+  await prisma.activity.create({
+    data: {
+      type: "CALL",
+      content: "Called Ruslan, confirmed the SOC2 doc set will land Wednesday.",
+      userId: user.id,
+      dealId: deals["Quarterly content monitoring contract"],
+    },
+  });
+  await prisma.activity.create({
+    data: {
+      type: "STAGE_CHANGE",
+      content: "Stage: Lead → Qualification",
+      userId: user.id,
+      dealId: deals["Quarterly content monitoring contract"],
+    },
   });
 
-  console.log(`Seeded user ${user.email} with ${deals.length} deals.`);
-  for (const c of counts) {
-    console.log(`  ${c.stage}: ${c._count._all}`);
-  }
+  // Reminders: one overdue, one upcoming.
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const inThreeDays = new Date(today);
+  inThreeDays.setDate(inThreeDays.getDate() + 3);
+
+  await prisma.reminder.create({
+    data: {
+      title: "Send SOC2 docs to Lookout",
+      dueDate: yesterday,
+      userId: user.id,
+      dealId: deals["Quarterly content monitoring contract"],
+    },
+  });
+  await prisma.reminder.create({
+    data: {
+      title: "Follow up on subscription pricing with Aliya",
+      dueDate: inThreeDays,
+      userId: user.id,
+      dealId: deals["Wedding bouquet — recurring monthly order"],
+    },
+  });
+
+  console.log(`Seeded user ${user.email} (password: ${demoPassword})`);
+  console.log(`  ${companiesData.length} companies, ${contactsData.length} contacts, ${dealsData.length} deals`);
 }
 
 main()
