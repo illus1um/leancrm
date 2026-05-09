@@ -177,6 +177,30 @@ export function BoardClient({
         </div>
       ) : null}
 
+      {deals.length === 0 ? (
+        <div className="mb-4 grid gap-3 rounded-md border border-dashed border-hairline/70 bg-paper-deep/30 px-6 py-8 text-center sm:py-10">
+          <p className="text-[10px] uppercase tracking-[0.22em] text-ink-soft">
+            Board is empty
+          </p>
+          <p className="text-base text-ink">
+            Add your first deal to one of the six columns below. Use{" "}
+            <span className="rounded-full border border-hairline px-2 py-0.5 text-xs">+</span>{" "}
+            in the column header.
+          </p>
+          <p className="mx-auto max-w-md text-xs text-ink-soft">
+            Need contacts or companies to attach? Create them under{" "}
+            <Link href="/contacts" className="link-ink text-ink hover:text-accent">
+              Contacts
+            </Link>{" "}
+            or{" "}
+            <Link href="/companies" className="link-ink text-ink hover:text-accent">
+              Companies
+            </Link>{" "}
+            first — every deal needs one of them.
+          </p>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {DEAL_STAGES.map((stage) => (
           <Column

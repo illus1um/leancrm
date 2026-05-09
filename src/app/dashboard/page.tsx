@@ -8,7 +8,13 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const user = await requireAuth();
-  const [stageCounts, openReminders, recentActivity, deals] = await Promise.all([
+  const stuckThreshold = new Date();
+  stuckThreshold.setDate(stuckThreshold.getDate() - 7);
+
+  const sessionCount = await prisma.session.count({ where: { userId: user.id } });
+  const greeting = sessionCount > 1 ? "Welcome back" : "Welcome";
+
+  const [stageCounts, openReminders, recentActivity, deals, stuckDeals] = await Promise.all([
     prisma.deal.groupBy({
       by: ["stage"],
       _count: { _all: true },
@@ -30,6 +36,19 @@ export default async function DashboardPage() {
       take: 8,
     }),
     prisma.deal.count({ where: { userId: user.id } }),
+    prisma.deal.findMany({
+      where: {
+        userId: user.id,
+        stage: { in: ["LEAD", "QUALIFICATION", "PROPOSAL", "NEGOTIATION"] },
+        updatedAt: { lt: stuckThreshold },
+      },
+      include: {
+        contact: { select: { fullName: true } },
+        company: { select: { name: true } },
+      },
+      orderBy: { updatedAt: "asc" },
+      take: 5,
+    }),
   ]);
 
   const countsByStage = new Map<string, { count: number; sum: number }>();
@@ -54,7 +73,7 @@ export default async function DashboardPage() {
     <div className="mx-auto max-w-[1200px] px-5 py-10 sm:px-8">
       <header className="border-b border-rule pb-6">
         <p className="text-[10px] uppercase tracking-[0.22em] text-ink-soft">
-          Welcome back, {user.name}
+          {greeting}, {user.name}
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
       </header>
@@ -97,6 +116,43 @@ export default async function DashboardPage() {
           })}
         </div>
       </section>
+
+      {stuckDeals.length > 0 ? (
+        <section className="mt-10">
+          <h2 className="text-[10px] uppercase tracking-[0.22em] text-ink-soft">
+            Needs attention · stuck for &gt; 7 days
+          </h2>
+          <ul className="mt-3 divide-y divide-rule rounded-md border border-rule bg-paper-deep/40">
+            {stuckDeals.map((d) => {
+              const days = Math.max(
+                1,
+                Math.floor((Date.now() - d.updatedAt.getTime()) / (1000 * 60 * 60 * 24))
+              );
+              return (
+                <li key={d.id}>
+                  <Link
+                    href={`/deals/${d.id}`}
+                    className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-5 py-3 transition-colors hover:bg-paper"
+                  >
+                    <div>
+                      <p className="text-[15px] font-medium">{d.title}</p>
+                      <p className="text-xs text-ink-soft">
+                        {[d.contact?.fullName, d.company?.name].filter(Boolean).join(" · ") || "Unattached"}
+                      </p>
+                    </div>
+                    <span className="text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+                      {STAGE_LABELS[d.stage as DealStage] ?? d.stage}
+                    </span>
+                    <span className="text-xs uppercase tracking-[0.18em] text-destructive tabular-nums">
+                      {days}d idle
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_1fr]">
         <section>
