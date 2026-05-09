@@ -4,6 +4,7 @@ import Link from "next/link";
 import "./globals.css";
 import { getCurrentUser } from "@/lib/auth";
 import { logoutUser } from "@/lib/actions/auth";
+import { MobileNav } from "@/components/mobile-nav";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
@@ -62,7 +63,7 @@ export default async function RootLayout({
                     />
                     {user.email}
                   </div>
-                  <form action={logoutUser}>
+                  <form action={logoutUser} className="hidden sm:block">
                     <button
                       type="submit"
                       className="text-xs uppercase tracking-[0.18em] text-ink-soft transition-colors hover:text-ink"
@@ -70,6 +71,7 @@ export default async function RootLayout({
                       Sign out
                     </button>
                   </form>
+                  <MobileNav userEmail={user.email} />
                 </>
               ) : (
                 <Link
